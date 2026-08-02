@@ -150,8 +150,8 @@ pub fn plan_all<'cfg>(cfg: &Config<'cfg>, tree: &MetaDeps<'cfg>) -> CargoResult<
 				let source = dep.as_source();
 				let dev_prefix = key.dev.then_some("dev-").unwrap_or_default();
 				if let Some(assets) = source.metadata()
-				                            .map(|m| if key.dev { m.dev_assets() } else { m.assets() }) &&
-				   !assets.is_empty()
+				                            .map(|m| if key.dev { m.dev_assets() } else { m.assets() })
+				                            .filter(|assets| !assets.is_empty())
 				{
 					match build_plan(&env, assets, &options, Some(crate_root.into())) {
 						Ok(plan) => {
@@ -201,7 +201,9 @@ pub fn plan_all<'cfg>(cfg: &Config<'cfg>, tree: &MetaDeps<'cfg>) -> CargoResult<
 				// we already have plan for this dep
 				log::debug!("    done (~#{i}) (dev:{})", dep_key.dev);
 				indices.push(*i);
-			} else if with_dev && let Some(base_index) = plans.index.get(&dep_key.with_dev(false)).copied() {
+			} else if let Some(base_index) = with_dev.then(|| plans.index.get(&dep_key.with_dev(false)).copied())
+			                                         .flatten()
+			{
 				// we already have plan for this dep, but not for dev part
 				indices.push(base_index);
 				log::debug!("    done (~#{base_index}) (dev:{})", false);
@@ -325,9 +327,7 @@ pub fn merge_all_virtually<'cfg>(cfg: &Config<'cfg>,
 					       .or_insert_with(|| Vec::with_capacity(2))
 					       .push(*i);
 
-					if let Some(past) = targets.get(&target) &&
-					   past.len() > 1
-					{
+					if let Some(past) = targets.get(&target).filter(|past| past.len() > 1) {
 						let id = past.iter()
 						             .flat_map(|x| plans.index.iter().find_map(|(key, i)| (i == x).then_some(key)))
 						             .collect::<Vec<_>>();

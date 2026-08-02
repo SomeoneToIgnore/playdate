@@ -93,10 +93,10 @@ pub fn build_all<'t, 'cfg>(cfg: &Config<'cfg>, tree: &'t MetaDeps<'cfg>) -> Carg
 	let plans = plan::plan_all(cfg, tree)?;
 
 	// validation:
-	if let Err(err) = plan::merge_all_virtually(cfg, tree, &plans) &&
-	   !cfg.compile_options.build_config.keep_going
-	{
-		return Err(err.context("Assets validation failed"));
+	if let Err(err) = plan::merge_all_virtually(cfg, tree, &plans) {
+		if !cfg.compile_options.build_config.keep_going {
+			return Err(err.context("Assets validation failed"));
+		}
 	}
 
 	// results:

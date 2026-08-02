@@ -17,9 +17,7 @@ pub fn metadata(cfg: &Config) -> CargoResult<CargoMetadataPd> {
 	cargo.arg("--format-version=1");
 
 	let kinds = &cfg.compile_options.build_config.requested_kinds[..];
-	if kinds.len() == 1 &&
-	   let Some(kind) = kinds.first()
-	{
+	if let [kind] = kinds {
 		match kind {
 			cargo::core::compiler::CompileKind::Target(target) if target != &cfg.host_target => {
 				cargo.args(["--filter-platform", &target.rustc_target()]);
