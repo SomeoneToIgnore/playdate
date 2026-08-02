@@ -57,8 +57,8 @@ fn cmp_versions(a: impl AsRef<[u8]>, b: impl AsRef<[u8]>) -> Ordering {
 	let b = b.as_ref().split(|v| *v == b'.');
 
 	let parse = |v: &[u8]| {
-		let s = unsafe { str::from_raw_parts(v.as_ptr(), v.len()) };
-		s.parse::<usize>()
+		core::str::from_utf8(v).map_err(drop)
+		                       .and_then(|s| s.parse::<usize>().map_err(drop))
 	};
 
 	for (a, b) in a.map(parse).zip(b.map(parse)) {

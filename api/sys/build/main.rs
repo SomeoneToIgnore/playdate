@@ -1,5 +1,3 @@
-#![feature(str_from_raw_parts)]
-#![feature(format_args_nl)]
 use std::borrow::Cow;
 use std::path::{PathBuf, Path};
 use bindgen_cfg::*;
