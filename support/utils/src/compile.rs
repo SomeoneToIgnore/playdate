@@ -24,7 +24,6 @@ pub const RUSTFLAGS_LIB_PLAYDATE: &[&str] = &["-Ctarget-cpu=cortex-m7",
                                               "-Ctarget-feature=-fp64",
                                               "-Clink-args=--emit-relocs",
                                               "-Crelocation-model=pic",
-                                              "-Csoft-float=no",
                                               "-Clink-arg=--cref",
                                               "-Clink-arg=--gc-sections"];
 /// For bin.
@@ -36,7 +35,6 @@ pub const RUSTFLAGS_BIN_PLAYDATE: &[&str] = &["-Ctarget-cpu=cortex-m7",
                                               "-Ctarget-feature=-fp64",
                                               "-Clink-args=--emit-relocs",
                                               "-Crelocation-model=pic",
-                                              "-Csoft-float=no",
                                               "-Clink-arg=--cref",
                                               "-Clink-arg=--gc-sections",
                                               "-Clink-arg=--entry=eventHandlerShim"];
