@@ -166,7 +166,9 @@ impl crate::text::api::Api for Cache {
 	/// Equivalent to [`sys::ffi::playdate_graphics::makeFontFromData`]
 	#[doc(alias = "sys::ffi::playdate_graphics::makeFontFromData")]
 	#[inline(always)]
-	fn make_font_from_data(&self) -> unsafe extern "C" fn(data: *mut LCDFontData, wide: c_int) -> *mut LCDFont {
+	fn make_font_from_data(
+		&self)
+		-> unsafe extern "C" fn(data: *mut LCDFontData, wide: c_int, datalength: c_int) -> *mut LCDFont {
 		self.0.makeFontFromData.expect("makeFontFromData")
 	}
 

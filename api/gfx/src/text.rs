@@ -500,7 +500,7 @@ impl<Api: crate::api::Api> Graphics<Api> {
 	#[doc(alias = "sys::ffi::playdate_graphics::makeFontFromData")]
 	pub fn make_font_from_bytes(&self, data: &[u8], wide: c_int) -> Result<Font, Error> {
 		let f = self.0.make_font_from_data();
-		let ptr = unsafe { f(data.as_ptr() as _, wide) };
+		let ptr = unsafe { f(data.as_ptr() as _, wide, data.len() as _) };
 
 		if ptr.is_null() {
 			Err(Error::Alloc)
@@ -729,7 +729,9 @@ pub mod api {
 		/// Equivalent to [`sys::ffi::playdate_graphics::makeFontFromData`]
 		#[doc(alias = "sys::ffi::playdate_graphics::makeFontFromData")]
 		#[inline(always)]
-		fn make_font_from_data(&self) -> unsafe extern "C" fn(data: *mut LCDFontData, wide: c_int) -> *mut LCDFont {
+		fn make_font_from_data(
+			&self)
+			-> unsafe extern "C" fn(data: *mut LCDFontData, wide: c_int, datalength: c_int) -> *mut LCDFont {
 			*sys::api!(graphics.makeFontFromData)
 		}
 
