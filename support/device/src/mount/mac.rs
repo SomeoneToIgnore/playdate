@@ -4,6 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use futures::Future;
 use futures::FutureExt;
+use futures::future::BoxFuture;
 use serde::Deserialize;
 use crate::device::Device;
 use crate::error::Error;
@@ -89,7 +90,7 @@ pub struct SpusbInfo<Fut>
 pub async fn volume_for<Info>(dev: Info) -> Result<Volume, Error>
 	where Info: AsRef<nusb::DeviceInfo> {
 	if let Some(sn) = dev.as_ref().serial_number() {
-		let res = spusb(move |info| info.serial_num == sn).map(|mut iter| iter.next().map(|info| info.volume));
+		let res = spusb(move |info| info.serial_num == sn).map(|list| list.into_iter().next().map(|info| info.volume));
 		match res {
 			Ok(None) => Err(Error::not_found()),
 			Ok(Some(fut)) => Ok(fut),
@@ -146,8 +147,8 @@ pub fn volumes_for<'i, I: 'i>(
 	               .filter_map(|dev| dev.info().serial_number().map(|sn| (dev, sn)))
 	               .collect::<Vec<_>>();
 
-	spusb(|_| true).map(move |iter| {
-		               iter.filter_map(move |info| {
+	spusb(|_| true).map(move |list| {
+		               list.into_iter().filter_map(move |info| {
 			                   devs.iter()
 			                       .find(|(_, sn)| info.serial == *sn)
 			                       .map(|(dev, _)| (info.volume, *dev))
@@ -158,22 +159,104 @@ pub fn volumes_for<'i, I: 'i>(
 
 /// Call `system_profiler -json SPUSBDataType`
 #[cfg_attr(feature = "tracing", tracing::instrument(skip(filter)))]
-fn spusb<F>(filter: F)
-            -> Result<impl Iterator<Item = SpusbInfo<impl Future<Output = Result<PathBuf, Error>>>>, Error>
+fn spusb<F>(mut filter: F) -> Result<Vec<SpusbInfo<BoxFuture<'static, Result<PathBuf, Error>>>>, Error>
 	where F: FnMut(&DeviceInfo) -> bool {
 	use std::process::Command;
 
 	let output = Command::new("system_profiler").args(["-json", "SPUSBDataType"])
 	                                            .output()?;
 	output.status.exit_ok()?;
-	parse_spusb(filter, &output.stdout)
+	let found = parse_spusb(&mut filter, &output.stdout)?;
+	if !found.is_empty() {
+		return Ok(found);
+	}
+	trace!("system_profiler reported no matching devices, trying ioreg");
+	let output = Command::new("ioreg").args(["-r", "-c", "IOUSBHostDevice", "-a", "-l"])
+	                                  .output()?;
+	output.status.exit_ok()?;
+	let found = parse_ioreg(&output.stdout)?.into_iter()
+	                                        .filter(|(info, _)| filter(info))
+	                                        .map(|(info, bsd_name)| {
+		                                        SpusbInfo { name: info.name,
+		                                                    serial: info.serial_num,
+		                                                    volume: mount_point_for_bsd(bsd_name).boxed() }
+	                                        })
+	                                        .collect();
+	Ok(found)
 }
 
 
-fn parse_spusb<F>(
-	filter: F,
-	data: &[u8])
-	-> Result<impl Iterator<Item = SpusbInfo<impl Future<Output = Result<PathBuf, Error>>>>, Error>
+fn parse_ioreg(data: &[u8]) -> Result<Vec<(DeviceInfo, String)>, Error> {
+	let nodes: Vec<IoRegNode> = plist::from_bytes(data)?;
+	let vendor = u32::from(crate::VENDOR_ID);
+	let mut found = Vec::new();
+	for node in nodes {
+		if node.vendor_id != Some(vendor) {
+			continue;
+		}
+		let Some(serial_num) = node.serial_num.clone() else {
+			continue;
+		};
+		let Some(bsd_name) = first_leaf_bsd(&node) else {
+			continue;
+		};
+		let info = DeviceInfo { name: node.name.clone().unwrap_or_else(|| "Playdate".to_string()),
+		                        serial_num,
+		                        vendor_id: VENDOR_ID_ENC.to_string(),
+		                        media: None };
+		found.push((info, bsd_name));
+	}
+	Ok(found)
+}
+
+fn first_leaf_bsd(node: &IoRegNode) -> Option<String> {
+	if node.leaf == Some(true) {
+		if let Some(bsd_name) = &node.bsd_name {
+			return Some(bsd_name.clone());
+		}
+	}
+	node.children
+	    .as_deref()
+	    .unwrap_or_default()
+	    .iter()
+	    .find_map(first_leaf_bsd)
+}
+
+
+#[cfg_attr(feature = "tracing", tracing::instrument())]
+async fn mount_point_for_bsd(bsd_name: String) -> Result<PathBuf, Error> {
+	use std::process::Command;
+
+	let output = Command::new("diskutil").args(["info", "-plist"])
+	                                     .arg(&bsd_name)
+	                                     .output()?;
+	output.status.exit_ok()?;
+	let info: DiskUtilResponse = plist::from_bytes(&output.stdout)?;
+	info.mount_point
+	    .filter(|s| !s.trim().is_empty())
+	    .ok_or(Error::MountNotFound(bsd_name))
+	    .map(PathBuf::from)
+}
+
+
+#[derive(Deserialize, Debug)]
+struct IoRegNode {
+	#[serde(rename = "kUSBSerialNumberString")]
+	serial_num: Option<String>,
+	#[serde(rename = "idVendor")]
+	vendor_id: Option<u32>,
+	#[serde(rename = "kUSBProductString")]
+	name: Option<String>,
+	#[serde(rename = "BSD Name")]
+	bsd_name: Option<String>,
+	#[serde(rename = "Leaf")]
+	leaf: Option<bool>,
+	#[serde(rename = "IORegistryEntryChildren")]
+	children: Option<Vec<IoRegNode>>,
+}
+
+
+fn parse_spusb<F>(filter: F, data: &[u8]) -> Result<Vec<SpusbInfo<BoxFuture<'static, Result<PathBuf, Error>>>>, Error>
 	where F: FnMut(&DeviceInfo) -> bool
 {
 	let data: SystemProfilerResponse = serde_json::from_slice(data)?;
@@ -211,7 +294,7 @@ fn parse_spusb<F>(
 			                                        .filter_map(|par| {
 				                                        if let Some(path) = par.mount_point {
 					                                        trace!("found mount-point: {}", path.display());
-					                                        Some(futures_lite::future::ready(Ok(path)).left_future())
+					                                        Some(futures_lite::future::ready(Ok(path)).boxed())
 				                                        } else {
 					                                        // This is ok for just one connected PD,
 					                                        // Otherwise, it can be mount of other PD, but not this PD.
@@ -224,7 +307,7 @@ fn parse_spusb<F>(
 					                                        //  } else
 					                                        if par.volume_uuid.is_some() {
 						                                        trace!("not mounted yet, create resolver fut");
-						                                        Some(mount_point_for_partition(par).right_future())
+						                                        Some(mount_point_for_partition(par).boxed())
 					                                        } else {
 						                                        None
 					                                        }
@@ -233,7 +316,8 @@ fn parse_spusb<F>(
 			                                        .next()
 		                                   });
 		                 volume.map(|volume| SpusbInfo { name, serial, volume })
-	                 });
+	                 })
+	                 .collect();
 	Ok(result)
 }
 
@@ -355,7 +439,7 @@ mod tests {
 		 }
 		"#;
 
-		let res = parse_spusb(|_| true, data.as_bytes()).unwrap().count();
+		let res = parse_spusb(|_| true, data.as_bytes()).unwrap().len();
 		assert_eq!(0, res);
 	}
 
@@ -391,7 +475,7 @@ mod tests {
 		"#;
 
 		let dev = {
-			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap().collect();
+			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap();
 			assert_eq!(1, devs.len());
 			devs.pop().unwrap()
 		};
@@ -461,7 +545,7 @@ mod tests {
 		"#;
 
 		let dev = {
-			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap().collect();
+			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap();
 			assert_eq!(1, devs.len());
 			devs.pop().unwrap()
 		};
@@ -549,7 +633,7 @@ mod tests {
 		"#;
 
 		let dev = {
-			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap().collect();
+			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap();
 			assert!(!devs.is_empty());
 			assert_eq!(1, devs.len());
 			devs.pop().unwrap()
@@ -597,7 +681,7 @@ mod tests {
 		"#;
 
 		let dev = {
-			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap().collect();
+			let mut devs: Vec<_> = parse_spusb(|_| true, data.as_bytes()).unwrap();
 			assert_eq!(1, devs.len());
 			devs.pop().unwrap()
 		};
