@@ -284,7 +284,8 @@ pub async fn mount_by_port_name<S: AsRef<str>>(
 
 #[cfg_attr(feature = "tracing", tracing::instrument(fields(dev = dev.info().serial_number())))]
 fn mount_dev(mut dev: Device) -> Result<impl Future<Output = Result<MountedDevice>>> {
-	let retry = Retries::<DefaultIterTime>::default();
+	let mut retry = Retries::<DefaultIterTime>::default();
+	retry.total = Duration::from_secs(60);
 	let mut retry_wait_mount_point = retry.clone();
 	retry_wait_mount_point.total += Duration::from_secs(40);
 

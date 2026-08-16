@@ -23,25 +23,43 @@ pub async fn run(query: Query,
                  force: bool)
                  -> Result<Vec<device::Device>> {
 	use crate::retry::{DefaultIterTime, Retries};
-	let wait_data = Retries::<DefaultIterTime>::default();
+	let wait_data = {
+		let mut retry = Retries::<DefaultIterTime>::default();
+		retry.total = std::time::Duration::from_secs(60);
+		retry
+	};
 
 
-	let to_run = if !no_install {
-		install::mount_and_install(query, &pdx, force).await?
-		                                              .filter_map(|r| r.map_err(|e| error!("{e}")).ok())
-		                                              .flat_map(|path| {
-			                                              async {
-				                                              let (mount, path) = path.into_parts();
-				                                              mount.unmount().await?;
-				                                              wait_mode_data(mount.device, wait_data.clone()).await
-				                                                                                         .map(|dev| {
-					                                                                                         (dev, path.into())
-				                                                                                         })
-			                                              }.into_stream()
-			                                              .filter_map(move |r| r.inspect_err(|e| error!("{e}")).ok())
-		                                              })
-		                                              .collect::<Vec<(device::Device, Cow<_>)>>()
-		                                              .await
+	let to_run: Vec<(device::Device, Cow<str>)> = if !no_install {
+		let results = install::mount_and_install(query, &pdx, force).await?
+		                                                            .flat_map(|res| {
+			                                                            let wait_data = wait_data.clone();
+			                                                            async move {
+				                                                            let path = res?;
+				                                                            let (mount, path) = path.into_parts();
+				                                                            mount.unmount().await?;
+				                                                            let dev =
+					                                                            wait_mode_data(mount.device, wait_data).await?;
+				                                                            Ok::<_, Error>((dev, Cow::from(path)))
+			                                                            }.into_stream()
+		                                                            })
+		                                                            .collect::<Vec<Result<(device::Device, Cow<str>)>>>()
+		                                                            .await;
+		let mut to_run = Vec::with_capacity(results.len());
+		let mut failed = None;
+		for res in results {
+			match res {
+				Ok(pair) => to_run.push(pair),
+				Err(err) => {
+					error!("{err}");
+					failed = Some(err);
+				},
+			}
+		}
+		if to_run.is_empty() {
+			return Err(failed.unwrap_or_else(Error::not_found));
+		}
+		to_run
 	} else {
 		usb::discover::devices_data()?.map(|dev| (dev, pdx.to_string_lossy()))
 		                              .collect()
