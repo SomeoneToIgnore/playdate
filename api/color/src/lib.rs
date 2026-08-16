@@ -1,3 +1,7 @@
+// Cap all lints, mirroring the --cap-lints=allow every non-path consumer gets:
+// as path-patched dependencies these crates would otherwise spam their
+// warnings (bindgen output included) into every dependent app build.
+#![allow(warnings)]
 #![cfg_attr(not(test), no_std)]
 #![feature(const_trait_impl)]
 #![feature(impl_trait_in_assoc_type)]
