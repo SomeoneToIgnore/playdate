@@ -12,7 +12,7 @@ pub fn init(verbose: u32) -> anyhow::Result<()> {
 
 	let env = Env::new().filter(var).write_style(style);
 	let mut builder = Builder::new();
-	builder.filter_level(LevelFilter::Off);
+	builder.filter_level(LevelFilter::Error);
 	if verbose < 3 {
 		builder.filter(Some("cargo:"), LevelFilter::Off);
 	}
