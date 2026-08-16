@@ -20,8 +20,12 @@ pub const GCC_ARGS_LIB: &[&str] = &["-nostartfiles",
 
 
 pub const RUSTFLAGS_LIB_HOST: &[&str] = &["-Ctarget-cpu=native"];
-pub const RUSTFLAGS_LIB_PLAYDATE: &[&str] = &["-Ctarget-cpu=cortex-m7",
-                                              "-Ctarget-feature=-fp64",
+// `-Ztune-cpu` replaces `-Ctarget-cpu=cortex-m7` + `-Ctarget-feature=-fp64`:
+// M7 scheduling without the cpu's double-precision FPU feature, which the
+// LLVM-only `fp64` (unknown to rustc) had to subtract back out -- one rustc
+// warning per compiled crate on recent nightlies. The thumbv7em-none-eabihf
+// baseline ISA already matches the device's single-precision-only FPU.
+pub const RUSTFLAGS_LIB_PLAYDATE: &[&str] = &["-Ztune-cpu=cortex-m7",
                                               "-Clink-args=--emit-relocs",
                                               "-Crelocation-model=pic",
                                               "-Clink-arg=--cref",
@@ -31,8 +35,7 @@ pub const RUSTFLAGS_LIB_PLAYDATE: &[&str] = &["-Ctarget-cpu=cortex-m7",
 /// Do not forget
 /// - `-Clink-arg=-T...link_map.ld`
 /// - `-L{libs-search-paths}`
-pub const RUSTFLAGS_BIN_PLAYDATE: &[&str] = &["-Ctarget-cpu=cortex-m7",
-                                              "-Ctarget-feature=-fp64",
+pub const RUSTFLAGS_BIN_PLAYDATE: &[&str] = &["-Ztune-cpu=cortex-m7",
                                               "-Clink-args=--emit-relocs",
                                               "-Crelocation-model=pic",
                                               "-Clink-arg=--cref",
