@@ -237,7 +237,6 @@ pub fn initialize_from(args: impl IntoIterator<Item = impl Into<OsString> + AsRe
 		                         .then(|| matches.get_one::<PathBuf>("path").cloned())
 		                         .flatten();
 		let create_full_config = matches.flag("full-config");
-		let create_local_schema = matches.flag("local-schema");
 		let create_full_metadata = matches.flag("full-metadata");
 		let create_deps_sys_only = matches.flag("sys-only");
 		let create_deps = {
@@ -280,8 +279,6 @@ pub fn initialize_from(args: impl IntoIterator<Item = impl Into<OsString> + AsRe
 		return Ok(Config::new(
 		                      cmd,
 		                      args,
-		                      verbose,
-		                      quiet,
 		                      dry_run,
 		                      skip_unknown,
 		                      skip_prebuild,
@@ -296,7 +293,6 @@ pub fn initialize_from(args: impl IntoIterator<Item = impl Into<OsString> + AsRe
 		                      prevent_unwinding,
 		                      create_path,
 		                      create_full_config,
-		                      create_local_schema,
 		                      create_full_metadata,
 		                      create_deps_sys_only,
 		                      create_deps,
@@ -329,7 +325,7 @@ fn command_aliases<'s, 'c: 's>(cmd: &'c Cmd,
 }
 
 /// Get all aliases for the `arg`, returns tuple: `(short, long)`.
-fn arg_all_aliases(arg: &Arg) -> (impl Iterator<Item = char>, impl Iterator<Item = Cow<str>>) {
+fn arg_all_aliases(arg: &Arg) -> (impl Iterator<Item = char>, impl Iterator<Item = Cow<'_, str>>) {
 	let shorts = arg.get_short().into_iter().chain(arg.get_all_short_aliases()
 	                                                  .into_iter()
 	                                                  .flat_map(|a| a.into_iter()));

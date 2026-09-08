@@ -1,7 +1,6 @@
 [package]
 name = "playdate-allocator"
 version = "0.1.0"
-readme = "README.md"
 description = "Global allocator and allocator-api implementation for Playdate"
 keywords = ["playdate", "allocator", "allocator-api", "gamedev"]
 categories = ["memory-management", "external-ffi-bindings", "api-bindings", "game-development", "no-std"]

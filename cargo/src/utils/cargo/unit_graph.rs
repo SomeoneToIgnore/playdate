@@ -4,7 +4,6 @@ use crate::cli::cmd::Cmd;
 use crate::config::Config;
 use crate::proc::cargo_proxy_cmd;
 use crate::proc::read_cargo_json;
-use super::format::TargetKindWild;
 use self::format::UnitGraph;
 
 
@@ -44,26 +43,6 @@ impl format::UnitTarget {
 				}
 			},
 			format::TargetKind::CustomBuild => TK::CustomBuild,
-		}
-	}
-
-
-	pub fn kind_wild(&self) -> TargetKindWild {
-		use cargo::core::compiler::CrateType as CT;
-
-		match self.kind {
-			format::TargetKind::Lib(_) => TargetKindWild::Lib,
-			format::TargetKind::Bin => TargetKindWild::Bin,
-			format::TargetKind::Test => TargetKindWild::Test,
-			format::TargetKind::Bench => TargetKindWild::Bench,
-			format::TargetKind::Example => {
-				if &self.crate_types == &[CT::Bin] {
-					TargetKindWild::ExampleBin
-				} else {
-					TargetKindWild::ExampleLib
-				}
-			},
-			format::TargetKind::CustomBuild => TargetKindWild::CustomBuild,
 		}
 	}
 

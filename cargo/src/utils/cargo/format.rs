@@ -89,42 +89,6 @@ impl Serialize for TargetKind {
 }
 
 
-#[derive(Debug, Clone, Copy)]
-pub enum TargetKindWild {
-	Lib,
-	Bin,
-	Test,
-	Bench,
-	ExampleLib,
-	ExampleBin,
-	CustomBuild,
-}
-
-impl PartialEq<TargetKind> for TargetKindWild {
-	fn eq(&self, other: &TargetKind) -> bool {
-		match self {
-			TargetKindWild::Lib => matches!(other, TargetKind::Lib(_)),
-			TargetKindWild::Bin => matches!(other, TargetKind::Bin),
-			TargetKindWild::Test => matches!(other, TargetKind::Test),
-			TargetKindWild::Bench => matches!(other, TargetKind::Bench),
-			TargetKindWild::ExampleLib => matches!(other, TargetKind::Example),
-			TargetKindWild::ExampleBin => matches!(other, TargetKind::Example),
-			TargetKindWild::CustomBuild => matches!(other, TargetKind::CustomBuild),
-		}
-	}
-}
-
-
-pub fn de_package_id_or_specs<'de, D>(deserializer: D) -> Result<Vec<PackageId>, D::Error>
-	where D: Deserializer<'de> {
-	let items = Vec::<String>::deserialize(deserializer)?;
-	let mut ids = Vec::with_capacity(items.len());
-	for item in items {
-		ids.push(string_to_package_id::<D::Error>(item)?);
-	}
-	Ok(ids)
-}
-
 pub fn de_package_id_or_spec<'de, D>(deserializer: D) -> Result<PackageId, D::Error>
 	where D: Deserializer<'de> {
 	string_to_package_id(String::deserialize(deserializer)?)

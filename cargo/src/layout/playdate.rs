@@ -106,8 +106,7 @@ impl<'cfg> CrossTargetLayout {
 }
 
 impl Layout for CrossTargetLayout {
-	fn root(&self) -> &Path { self.root.as_ref() }
-	fn dest(&self) -> Cow<Path> { self.dest.as_path().into() }
+	fn dest(&self) -> Cow<'_, Path> { self.dest.as_path().into() }
 
 	fn create_dest_dir(&mut self) -> anyhow::Result<()> {
 		if !self.root.try_exists()? {
@@ -133,14 +132,14 @@ impl Layout for CrossTargetLayout {
 impl playdate::layout::Layout for CrossTargetLayout {
 	fn name(&self) -> &TargetName { &self.name }
 	fn root(&self) -> &Path { self.dest.as_path() }
-	fn dest(&self) -> Cow<Path> { self.target.as_path().into() }
-	fn assets(&self) -> Cow<Path> { self.target.join("assets").into() }
-	fn assets_hash(&self) -> Cow<Path> { unimplemented!() }
-	fn assets_plan(&self) -> Cow<Path> { unimplemented!() }
+	fn dest(&self) -> Cow<'_, Path> { self.target.as_path().into() }
+	fn assets(&self) -> Cow<'_, Path> { self.target.join("assets").into() }
+	fn assets_hash(&self) -> Cow<'_, Path> { unimplemented!() }
+	fn assets_plan(&self) -> Cow<'_, Path> { unimplemented!() }
 
-	fn build(&self) -> Cow<Path> { self.target.join("build").into() }
+	fn build(&self) -> Cow<'_, Path> { self.target.join("build").into() }
 
-	fn manifest(&self) -> Cow<Path> {
+	fn manifest(&self) -> Cow<'_, Path> {
 		self.build()
 		    .join(playdate::manifest::PDX_PKG_MANIFEST_FILENAME)
 		    .into()
@@ -222,7 +221,7 @@ mod support {
 		fn name(&self) -> &Name { &self.name }
 		fn root(&self) -> &Path { self.root.as_ref() }
 
-		fn assets(&self) -> Cow<Path> { unimplemented!() }
+		fn assets(&self) -> Cow<'_, Path> { unimplemented!() }
 
 		fn prepare(&mut self) -> std::io::Result<()> {
 			use std::fs::create_dir_all;
@@ -244,7 +243,7 @@ mod support {
 		fn root(&self) -> &Path { self.root.as_ref() }
 
 		/// cargo-target-dir/playdate.assets/$name/assets/
-		fn assets(&self) -> Cow<Path> { self.dest().join("assets").into() }
+		fn assets(&self) -> Cow<'_, Path> { self.dest().join("assets").into() }
 
 		fn prepare(&mut self) -> std::io::Result<()> {
 			use std::fs::create_dir_all;
@@ -262,20 +261,19 @@ mod support {
 	}
 
 	impl<P: AsRef<Path>> PlaydateAssets<P> {
-		fn dev(&self) -> Cow<Path> { self.assets().parent().unwrap().join("dev").into() }
+		fn dev(&self) -> Cow<'_, Path> { self.assets().parent().unwrap().join("dev").into() }
 
 		/// cargo-target-dir/playdate.assets/$name/dev/assets/
-		pub fn assets_dev(&self) -> Cow<Path> { self.dev().join(self.assets().file_name().unwrap()).into() }
+		pub fn assets_dev(&self) -> Cow<'_, Path> { self.dev().join(self.assets().file_name().unwrap()).into() }
 
 		/// cargo-target-dir/playdate.assets/$name/dev/build/
-		pub fn build_dev(&self) -> Cow<Path> { self.dev().join(self.build().file_name().unwrap()).into() }
+		pub fn build_dev(&self) -> Cow<'_, Path> { self.dev().join(self.build().file_name().unwrap()).into() }
 	}
 }
 
 
 impl<P: AsRef<Path>> Layout for ForTargetLayout<P> {
-	fn root(&self) -> &Path { self.root.as_ref() }
-	fn dest(&self) -> Cow<Path> { <Self as support::Layout>::dest(self) }
+	fn dest(&self) -> Cow<'_, Path> { <Self as support::Layout>::dest(self) }
 
 	fn create_dest_dir(&mut self) -> anyhow::Result<()> {
 		if !self.root.as_ref().try_exists()? {
@@ -295,8 +293,7 @@ impl<P: AsRef<Path>> Layout for ForTargetLayout<P> {
 
 
 impl<P: AsRef<Path>> Layout for PlaydateAssets<P> {
-	fn root(&self) -> &Path { self.root.as_ref() }
-	fn dest(&self) -> Cow<Path> { <Self as support::Layout>::dest(self) }
+	fn dest(&self) -> Cow<'_, Path> { <Self as support::Layout>::dest(self) }
 
 	fn create_dest_dir(&mut self) -> anyhow::Result<()> {
 		if !self.root.as_ref().try_exists()? {

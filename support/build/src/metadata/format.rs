@@ -788,8 +788,6 @@ mod tests {
 	use super::*;
 	use crate::manifest::format::ManifestFmt;
 
-	use std::assert_matches::assert_matches;
-
 
 	type ManifestWithAny = Ext<Manifest<String>>;
 	type ManifestStrict = Manifest<String>;
@@ -1030,11 +1028,7 @@ mod tests {
 		assert!(!AssetsOptions::default_dependencies());
 		let src = r#" [assets] "#;
 		let m = toml::from_str::<Options>(src).unwrap();
-		assert_matches!(
-		                m.assets,
-		                AssetsOptions { dependencies: None,
-		                                .. }
-		);
+		assert_eq!(None, m.assets.dependencies);
 
 		// overrides default
 		let src = r#"
@@ -1042,11 +1036,7 @@ mod tests {
 		             dependencies = true
 		          "#;
 		let m = toml::from_str::<Options>(src).unwrap();
-		assert_matches!(
-		                m.assets,
-		                AssetsOptions { dependencies: Some(true),
-		                                .. }
-		);
+		assert_eq!(Some(true), m.assets.dependencies);
 	}
 
 	#[test]
@@ -1071,7 +1061,10 @@ mod tests {
 		          "#;
 		let m = toml::from_str::<Temp>(src).unwrap();
 		assert!(!m.assets.is_empty());
-		assert_matches!(m.assets, AssetsRules::List(rules) if rules.len() == 2);
+		assert_eq!(
+		           AssetsRules::List(vec![String::from("one"), String::from("two")]),
+		           m.assets
+		);
 	}
 
 	#[test]
@@ -1082,7 +1075,14 @@ mod tests {
 		             "into/" = "files.*"
 		          "#;
 		let m = toml::from_str::<AssetsRules>(src).unwrap();
-		assert_matches!(m, AssetsRules::Map(rules) if rules.len() == 3);
+		assert_eq!(
+		           AssetsRules::Map(HashMap::from([
+			(String::from("included"), RuleValue::Boolean(true)),
+			(String::from("excluded"), RuleValue::Boolean(false)),
+			(String::from("into/"), RuleValue::String(String::from("files.*"))),
+		])),
+		           m
+		);
 	}
 
 
@@ -1099,7 +1099,14 @@ mod tests {
 		             "into/" = "files.*"
 		          "#;
 		let m = toml::from_str::<Temp>(src).unwrap();
-		assert_matches!(m.assets, AssetsRules::Map(rules) if rules.len() == 3);
+		assert_eq!(
+		           AssetsRules::Map(HashMap::from([
+			(String::from("included"), RuleValue::Boolean(true)),
+			(String::from("excluded"), RuleValue::Boolean(false)),
+			(String::from("into/"), RuleValue::String(String::from("files.*"))),
+		])),
+		           m.assets
+		);
 	}
 
 
@@ -1157,11 +1164,7 @@ mod tests {
 		          "#;
 		let m = toml::from_str::<MetadataInner>(src).unwrap();
 		assert!(m.assets.is_empty());
-		assert_matches!(
-		                m.options.assets,
-		                AssetsOptions { dependencies: Some(true),
-		                                .. }
-		);
+		assert_eq!(Some(true), m.options.assets.dependencies);
 	}
 
 	#[test]
@@ -1239,7 +1242,6 @@ mod tests {
 
 		let m = toml::from_str::<Metadata>(src).unwrap();
 
-		assert_matches!(m.assets(), AssetsRules::Map(_));
 		match m.assets() {
 			AssetsRules::Map(rules) => {
 				assert_eq!(3, rules.len());
@@ -1250,7 +1252,6 @@ mod tests {
 			_ => unreachable!(),
 		}
 
-		assert_matches!(m.dev_assets(), AssetsRules::Map(_));
 		match m.dev_assets() {
 			AssetsRules::Map(rules) => {
 				assert_eq!(3, rules.len());
@@ -1271,8 +1272,6 @@ mod tests {
 
 		let m = toml::from_str::<Metadata>(src).unwrap();
 
-		assert_matches!(m.assets(), AssetsRules::List(_));
-		assert_matches!(m.dev_assets(), AssetsRules::List(_));
 		match m.assets() {
 			AssetsRules::List(rules) => assert_eq!(&["a", "b", "c"], &rules[..]),
 			_ => unreachable!(),
@@ -1294,7 +1293,6 @@ mod tests {
 
 		let m = toml::from_str::<Metadata>(src).unwrap();
 
-		assert_matches!(m.assets(), AssetsRules::List(_));
 		match m.assets() {
 			AssetsRules::List(rules) => {
 				assert_eq!(3, rules.len());
@@ -1303,7 +1301,6 @@ mod tests {
 			_ => unreachable!(),
 		}
 
-		assert_matches!(m.dev_assets(), AssetsRules::Map(_));
 		match m.dev_assets() {
 			AssetsRules::Map(rules) => {
 				assert_eq!(2, rules.len());
@@ -1370,7 +1367,6 @@ mod tests {
 		assert!(opts.dependencies());
 		assert!(!AssetsOptions::default_dependencies());
 
-		assert_matches!(m.assets(), AssetsRules::Map(_));
 		match m.assets() {
 			AssetsRules::Map(rules) => {
 				assert_eq!(3, rules.len());
@@ -1380,7 +1376,13 @@ mod tests {
 			},
 			_ => unreachable!(),
 		}
-		assert_matches!(m.dev_assets(), AssetsRules::Map(rules) if rules.get("dev-included").is_some());
+		assert_eq!(
+		           &AssetsRules::Map(HashMap::from([(
+			String::from("dev-included"),
+			RuleValue::Boolean(true)
+		)])),
+		           m.dev_assets()
+		);
 
 		assert_eq!(1, m.bins().len());
 		assert_eq!(1, m.examples().len());

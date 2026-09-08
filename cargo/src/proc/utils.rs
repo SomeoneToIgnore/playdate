@@ -70,7 +70,7 @@ pub fn cargo(cfg: Option<&Config>) -> CargoResult<std::process::Command> {
 
 
 pub fn cargo_cmd(cfg: Option<&Config>) -> std::process::Command {
-	fn cargo_path<'t>(cfg: Option<&'t Config<'t>>) -> (Cow<'t, Path>, Option<&str>) {
+	fn cargo_path<'t>(cfg: Option<&'t Config<'t>>) -> (Cow<'t, Path>, Option<&'t str>) {
 		if let Some(cfg) = cfg {
 			let path = cfg.workspace.gctx().cargo_exe().log_err().ok().map(Cow::from);
 			if path.is_some() && path == std::env::current_exe().log_err().ok().map(Into::into) {

@@ -24,9 +24,6 @@ pub struct Config<'cfg> {
 	/// Cleaned args for_cargo - args excluding our exclusive args
 	pub args: Vec<OsString>,
 
-	pub verbose: u32,
-	pub quiet: bool,
-
 	pub dry_run: bool,
 	pub skip_unknown: bool,
 	pub skip_prebuild: bool,
@@ -48,7 +45,6 @@ pub struct Config<'cfg> {
 	// init & new
 	pub create_path: Option<PathBuf>,
 	pub create_full_config: bool,
-	pub create_local_schema: bool,
 	pub create_full_metadata: bool,
 	pub create_deps_sys_only: bool,
 	pub create_deps: Vec<Dependency<'static>>,
@@ -73,8 +69,6 @@ pub struct Config<'cfg> {
 impl<'cfg> Config<'cfg> {
 	pub fn new(cmd: Cmd,
 	           args: Vec<OsString>,
-	           verbose: u32,
-	           quiet: bool,
 	           dry_run: bool,
 	           skip_unknown: bool,
 	           skip_prebuild: bool,
@@ -89,7 +83,6 @@ impl<'cfg> Config<'cfg> {
 	           prevent_unwinding: bool,
 	           create_path: Option<PathBuf>,
 	           create_full_config: bool,
-	           create_local_schema: bool,
 	           create_full_metadata: bool,
 	           create_deps_sys_only: bool,
 	           create_deps: Vec<Dependency<'static>>,
@@ -101,8 +94,6 @@ impl<'cfg> Config<'cfg> {
 	           -> Self {
 		Self { cmd,
 		       args,
-		       verbose,
-		       quiet,
 		       dry_run,
 		       skip_unknown,
 		       skip_prebuild,
@@ -117,7 +108,6 @@ impl<'cfg> Config<'cfg> {
 		       prevent_unwinding,
 		       create_path,
 		       create_full_config,
-		       create_local_schema,
 		       create_full_metadata,
 		       create_deps_sys_only,
 		       create_deps,

@@ -244,43 +244,6 @@ fn bundle_id_from_crate_name(name: &str) -> String {
 }
 
 
-fn cargo_add<'s>(config: &Config<'_>,
-                 pwd: &Path,
-                 manifest: &Path,
-                 name: &str,
-                 _git: bool,
-                 rename: Option<&str>,
-                 features: Option<impl IntoIterator<Item = &'s str>>)
-                 -> CargoResult<()> {
-	let mut cargo = proc::cargo(config.into())?;
-	cargo.current_dir(pwd);
-
-	cargo.arg("add");
-	cargo.arg(name);
-
-	if let Some(name) = rename {
-		cargo.arg("--rename");
-		cargo.arg(name);
-	}
-
-	if let Some(features) = features {
-		let features = features.into_iter().collect::<Vec<_>>().join(",");
-		cargo.arg("--features");
-		cargo.arg(features);
-	}
-
-	// git => --git="URL"
-
-	cargo.arg("manifest-path");
-	cargo.arg(manifest);
-
-	cargo.stderr(Stdio::inherit());
-	cargo.stdout(Stdio::inherit());
-	cargo.status()?.exit_ok()?;
-	Ok(())
-}
-
-
 fn add_dependencies<'cfg>(config: &'cfg Config<'_>,
                           manifest: &mut toml_edit::DocumentMut)
                           -> CargoResult<(Vec<Cow<'cfg, str>>, bool)> {

@@ -2,7 +2,6 @@
 name = "playdate-sys"
 version = "0.5.6"
 build = "build/main.rs"
-readme = "README.md"
 description = "Low-level Playdate API bindings"
 keywords = ["playdate", "bindings", "ffi", "gamedev"]
 categories = ["external-ffi-bindings", "development-tools::ffi", "game-development", "no-std"]

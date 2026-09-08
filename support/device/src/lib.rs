@@ -2,7 +2,6 @@
 #![feature(trivial_bounds)]
 #![feature(error_generic_member_access)]
 #![feature(exit_status_error)]
-#![feature(associated_type_defaults)]
 #![cfg_attr(feature = "tracing", allow(unused_braces))]
 
 #[macro_use]

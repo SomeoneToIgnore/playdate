@@ -1,8 +1,5 @@
-#![feature(never_type)]
-#![feature(extract_if)]
 #![feature(iter_intersperse)]
 #![feature(exit_status_error)]
-#![feature(btree_extract_if)]
 #![feature(const_trait_impl)]
 #![feature(debug_closure_helpers)]
 

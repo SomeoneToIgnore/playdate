@@ -75,8 +75,7 @@ impl CargoLayout {
 }
 
 impl Layout for CargoLayout {
-	fn root(&self) -> &Path { &self.root }
-	fn dest(&self) -> Cow<Path> { self.dest.as_path().into() }
+	fn dest(&self) -> Cow<'_, Path> { self.dest.as_path().into() }
 
 	fn create_dest_dir(&mut self) -> anyhow::Result<()> {
 		if !self.root.try_exists()? {

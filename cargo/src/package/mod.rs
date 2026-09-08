@@ -41,8 +41,6 @@ mod ar;
 #[derive(Debug)]
 pub struct Product {
 	pub package_id: PackageId,
-	pub crate_types: Vec<CrateType>,
-	pub targets: Vec<CompileKind>,
 	/// Build-product name
 	pub name: String,
 	/// Path of produced artifact - pdx-dir or zip-file
@@ -184,8 +182,6 @@ fn package_single_target<'art>(config: &Config,
 
 	let result = Product { name: product.name,
 	                       package_id: product.package_id,
-	                       crate_types: vec![product.src_ct.clone()],
-	                       targets: vec![product.ck],
 	                       path: artifact.to_path_buf() };
 
 
@@ -358,8 +354,6 @@ fn package_multi_target<'art>(config: &Config,
 
 	let result = Product { package_id,
 	                       name: products[0].name.clone(),
-	                       crate_types: products.iter().map(|p| p.src_ct.clone()).collect(),
-	                       targets: products.iter().map(|p| p.ck).collect(),
 	                       path: artifact.to_path_buf() };
 	Ok(result)
 }

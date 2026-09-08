@@ -651,9 +651,7 @@ pub enum BuildProduct {
 	Skip {
 		reason: String,
 
-		package_id: PackageId,
 		ct: CrateType,
-		ck: CompileKind,
 	},
 }
 
@@ -667,9 +665,7 @@ impl BuildProduct {
 		                     artifact.ck
 		);
 		Self::Skip { reason,
-		             ct: artifact.ct,
-		             ck: artifact.ck,
-		             package_id: artifact.package_id }
+		             ct: artifact.ct }
 	}
 }
 

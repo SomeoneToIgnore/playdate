@@ -9,7 +9,6 @@ use anstyle::AnsiColor as Color;
 
 use crate::config::Config;
 use crate::logger::LogErr;
-use crate::proc::reader::format::Artifact;
 use crate::proc::reader::format::CargoMessage;
 use crate::proc::reader::format::CompilerMessage;
 
@@ -118,8 +117,6 @@ impl<S: DerefMut<Target = Shell>> CargoLogger<S> {
 			self.status("Finished", msg)
 		}
 	}
-
-	pub fn compiler_artifact(&mut self, artifact: Artifact) { self.print_cargo_message(artifact) }
 }
 
 

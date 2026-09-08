@@ -12,14 +12,14 @@ pub trait PackageSource {
 
 
 	/// Crate name.
-	fn name(&self) -> Cow<str>;
+	fn name(&self) -> Cow<'_, str>;
 	/// Crate authors.
 	fn authors(&self) -> &Self::Authors;
 	// fn authors(&self) -> &[&str];
 	/// Crate version (semver).
-	fn version(&self) -> Cow<str>;
+	fn version(&self) -> Cow<'_, str>;
 	/// Crate description.
-	fn description(&self) -> Option<Cow<str>>;
+	fn description(&self) -> Option<Cow<'_, str>>;
 	/// Crate metadata - `playdate` table.
 	fn metadata(&self) -> Option<&Self::Metadata>;
 
@@ -48,7 +48,7 @@ pub trait PackageSource {
 	fn examples(&self) -> &[&str];
 
 	/// Crate manifest path (Cargo.toml).
-	fn manifest_path(&self) -> Cow<Path>;
+	fn manifest_path(&self) -> Cow<'_, Path>;
 
 
 	fn manifest_for_crate(&self) -> impl ManifestSourceOptExt {
@@ -524,15 +524,15 @@ mod tests {
 		type Authors = [&'static str];
 		type Metadata = Metadata<String>;
 
-		fn name(&self) -> Cow<str> { "Name".into() }
+		fn name(&self) -> Cow<'_, str> { "Name".into() }
 		fn authors(&self) -> &Self::Authors { &["John"] }
-		fn version(&self) -> Cow<str> { "0.0.0".into() }
-		fn description(&self) -> Option<Cow<str>> { None }
+		fn version(&self) -> Cow<'_, str> { "0.0.0".into() }
+		fn description(&self) -> Option<Cow<'_, str>> { None }
 		fn bins(&self) -> &[&str] { &[SOME_TARGET] }
 		fn examples(&self) -> &[&str] { &[] }
 		fn metadata(&self) -> Option<&Self::Metadata> { None }
 
-		fn manifest_path(&self) -> Cow<Path> { Cow::Borrowed(Path::new("Cargo.toml")) }
+		fn manifest_path(&self) -> Cow<'_, Path> { Cow::Borrowed(Path::new("Cargo.toml")) }
 	}
 
 	#[test]
@@ -591,15 +591,15 @@ mod tests {
 		type Authors = [&'static str];
 		type Metadata = Metadata<String>;
 
-		fn name(&self) -> Cow<str> { "Crate Name".into() }
+		fn name(&self) -> Cow<'_, str> { "Crate Name".into() }
 		fn authors(&self) -> &[&'static str] { &["John"] }
-		fn version(&self) -> Cow<str> { "0.0.0".into() }
-		fn description(&self) -> Option<Cow<str>> { None }
+		fn version(&self) -> Cow<'_, str> { "0.0.0".into() }
+		fn description(&self) -> Option<Cow<'_, str>> { None }
 
 		fn bins(&self) -> &[&str] { &[SOME_TARGET] }
 		fn examples(&self) -> &[&str] { &[] }
 
-		fn manifest_path(&self) -> Cow<Path> { Cow::Borrowed(Path::new("Cargo.toml")) }
+		fn manifest_path(&self) -> Cow<'_, Path> { Cow::Borrowed(Path::new("Cargo.toml")) }
 
 		fn metadata(&self) -> Option<&Self::Metadata> { Some(&self.0) }
 	}

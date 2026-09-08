@@ -1,5 +1,4 @@
 #![feature(exitcode_exit_method)]
-#![feature(exit_status_error)]
 
 #[cfg(feature = "tracing")]
 #[macro_use]
@@ -75,8 +74,7 @@ fn enable_tracing() {
 async fn main() -> miette::Result<()> {
 	#[cfg(feature = "tracing")]
 	enable_tracing();
-	#[cfg(not(feature = "tracing"))]
-	{
+	if !cfg!(feature = "tracing") {
 		#[cfg(debug_assertions)]
 		std::env::set_var("RUST_LOG", "trace,nusb=info");
 		env_logger::Builder::from_env(env_logger::Env::default()).format_indent(Some(3))

@@ -35,11 +35,6 @@ pub mod format {
 	#[derive(serde::Deserialize, Debug)]
 	#[serde(rename_all = "kebab-case")]
 	pub struct TargetSpec {
-		pub dll_prefix: Option<String>,
 		pub dll_suffix: Option<String>,
-		pub staticlib_prefix: Option<String>,
-		pub staticlib_suffix: Option<String>,
-
-		pub target_family: Option<Vec<String>>,
 	}
 }

@@ -121,7 +121,9 @@ impl EnvResolver {
 		this
 	}
 
-	pub fn cache(&self) -> Option<std::cell::Ref<BTreeMap<String, String>>> { self.1.as_ref().map(|v| v.borrow()) }
+	pub fn cache(&self) -> Option<std::cell::Ref<'_, BTreeMap<String, String>>> {
+		self.1.as_ref().map(|v| v.borrow())
+	}
 	pub fn into_cache(self) -> Option<BTreeMap<String, String>> { self.1.map(|cell| cell.into_inner()) }
 }
 impl Default for EnvResolver {
@@ -246,13 +248,13 @@ impl serde::Serialize for Match {
 impl Eq for Match {}
 
 impl Match {
-	pub fn source(&self) -> Cow<Path> {
+	pub fn source(&self) -> Cow<'_, Path> {
 		match self {
 			Match::Match(source) => Cow::Borrowed(source.path()),
 			Match::Pair { source, .. } => Cow::Borrowed(source.as_path()),
 		}
 	}
-	pub fn target(&self) -> Cow<Path> {
+	pub fn target(&self) -> Cow<'_, Path> {
 		match self {
 			Match::Match(source) => Cow::Borrowed(Path::new(source.matched().complete())),
 			Match::Pair { target, .. } => Cow::Borrowed(target.as_path()),
@@ -542,6 +544,22 @@ mod tests {
 		assert_eq!(expected.len(), expected_passed);
 	}
 
+
+	#[test]
+	fn resolver_cache_borrows_until_dropped() {
+		assert!(EnvResolver::new().cache().is_none());
+		let resolver = EnvResolver::with_cache();
+		assert_eq!(resolver.cache().as_deref(), Some(&BTreeMap::new()));
+		let expected = BTreeMap::from([(String::from("KEY"), String::from("value"))]);
+		resolver.1.as_ref().unwrap().borrow_mut().extend(expected.clone());
+
+		let cache = resolver.cache().unwrap();
+		assert_eq!(&*cache, &expected);
+		assert!(resolver.1.as_ref().unwrap().try_borrow_mut().is_err());
+		drop(cache);
+		assert!(resolver.1.as_ref().unwrap().try_borrow_mut().is_ok());
+		assert_eq!(resolver.into_cache(), Some(expected));
+	}
 
 	#[test]
 	fn resolver_expr() {
