@@ -18,6 +18,8 @@ MacOS:
 1. Install rust nightly: `rustup toolchain install nightly`
 1. Arm toolchain is included with PlaydateSDK.
 
+Compiler discovery also supports native Arm GNU installations on macOS; see [discovery order and installation locations](../support/utils/README.md).
+
 Ubuntu Linux:
 1. Install the [PlaydateSDK](https://play.date/dev/) - remember where you extracted it.
 1. Set PLAYDATE_SDK_PATH env var: `export PLAYDATE_SDK_PATH="/path/to/PlaydateSDK-2.x.x/"`

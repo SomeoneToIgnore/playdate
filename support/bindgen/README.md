@@ -9,7 +9,7 @@ Util to generate bindings to Playdate with additional code-gen features like in-
 2. [Playdate SDK][sdk]
    - Ensure that env var `PLAYDATE_SDK_PATH` points to the SDK root
 3. Follow the [official documentation][sdk-prerequisites]
-   - Ensure that `arm-none-eabi-gcc` or `gcc-arm-none-eabi` in your `PATH`
+   - Make `arm-none-eabi-gcc` or `gcc-arm-none-eabi` available through `PATH` or the [automatically discovered installation locations](../utils/README.md).
 4. Requirements inherited by [bindgen][bindgen-crate], follow [official documentation][bindgen-requirements].
 
 

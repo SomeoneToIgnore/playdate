@@ -2,6 +2,8 @@
 
 use std::borrow::Cow;
 use std::ffi::OsStr;
+#[cfg(target_os = "macos")]
+use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
@@ -39,7 +41,7 @@ impl Gcc {
 			move |err: Error| {
 				let result = f();
 				if result.is_err() {
-					crate::error!("{err}");
+					crate::debug!("{err}");
 				}
 				result
 			}
@@ -96,19 +98,7 @@ impl Gcc {
 	pub fn try_from_default_path() -> Result<Self, Error> {
 		#[cfg(unix)]
 		{
-			let paths = ["/usr/local/bin/", "/usr/bin/"].into_iter()
-			                                            .map(Path::new)
-			                                            .flat_map(|p| ARM_NONE_EABI_GCC.iter().map(|name| p.join(name)))
-			                                            .filter(|p| p.try_exists().ok().unwrap_or_default());
-			for path in paths {
-				match Self::try_from_path(&path) {
-					Ok(gcc) => return Ok(gcc),
-					Err(err) => crate::debug!("{}: {err:?}", path.display()),
-				}
-			}
-
-			// Not found, so err:
-			Err(Error::Err("Could not find ARM toolchain in default paths"))
+			Self::try_from_default_paths(Path::new("/"))
 		}
 
 		#[cfg(windows)]
@@ -178,6 +168,39 @@ impl Gcc {
 		crate::trace!("trying canonicalize this: {}", path.display());
 		let path = path.canonicalize()?;
 		Ok(path)
+	}
+
+	#[cfg(unix)]
+	fn try_from_default_paths(root: &Path) -> Result<Self, Error> {
+		let directories = [root.join("usr/local/bin"), root.join("usr/bin")].into_iter();
+		#[cfg(target_os = "macos")]
+		let directories = {
+			let mut additional = Vec::new();
+			for (directory, bin) in [
+			                         ("usr/local/playdate", "bin"),
+			                         ("Applications/ArmGNUToolchain", "arm-none-eabi/bin"),
+			] {
+				let mut installations = fs::read_dir(root.join(directory)).into_iter()
+				                                                          .flatten()
+				                                                          .filter_map(Result::ok)
+				                                                          .map(|entry| entry.path().join(bin))
+				                                                          .collect::<Vec<_>>();
+				installations.sort_unstable();
+				additional.extend(installations);
+			}
+			additional.push(root.join("opt/homebrew/bin"));
+			directories.chain(additional)
+		};
+		let paths =
+			directories.flat_map(|directory| ARM_NONE_EABI_GCC.iter().map(move |name| directory.join(name)))
+			           .filter(|path| path.try_exists().ok().unwrap_or_default());
+		for path in paths {
+			match Self::try_from_path(&path) {
+				Ok(gcc) => return Ok(gcc),
+				Err(err) => crate::debug!("{}: {err:?}", path.display()),
+			}
+		}
+		Err(Error::Err("Could not find ARM toolchain in default paths"))
 	}
 }
 
@@ -340,6 +363,8 @@ pub mod err {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	#[cfg(target_os = "macos")]
+	use std::os::unix::fs::symlink;
 
 
 	#[test]
@@ -373,5 +398,81 @@ mod tests {
 		assert!(toolchain.bin().exists());
 		assert!(toolchain.lib().exists());
 		assert!(toolchain.include().exists());
+	}
+
+
+	#[test]
+	#[cfg(target_os = "macos")]
+	fn gcc_from_macos_installations() {
+		for (index, directory) in [
+		                           "usr/local/playdate/sdk version/bin",
+		                           "Applications/ArmGNUToolchain/native version/arm-none-eabi/bin",
+		                           "opt/homebrew/bin",
+		].into_iter()
+		                          .enumerate()
+		{
+			let installation = GccInstallation::new(&format!("layout-{index}"));
+			let compiler = installation.compiler(directory, ARM_NONE_EABI_GCC[index % 2], "/usr/bin/true");
+			assert_eq!(
+			           Gcc::try_from_default_paths(&installation.root).unwrap().path(),
+			           compiler
+			);
+		}
+	}
+
+	#[test]
+	#[cfg(target_os = "macos")]
+	fn gcc_from_macos_installations_skips_unusable_candidates() {
+		let installation = GccInstallation::new("fallback");
+		let name = ARM_NONE_EABI_GCC[0];
+		installation.compiler("usr/local/bin", name, "/usr/bin/false");
+		installation.compiler("usr/local/playdate/a old/bin", name, "/dev/null");
+		let later = installation.compiler("usr/local/playdate/c sdk/bin", name, "/usr/bin/true");
+		let sdk = installation.compiler("usr/local/playdate/b sdk/bin", name, "/usr/bin/true");
+		let arm = installation.compiler(
+		                                "Applications/ArmGNUToolchain/native/arm-none-eabi/bin",
+		                                name,
+		                                "/usr/bin/true",
+		);
+		let homebrew = installation.compiler("opt/homebrew/bin", name, "/usr/bin/true");
+		for expected in [sdk, later, arm, homebrew] {
+			assert_eq!(
+			           Gcc::try_from_default_paths(&installation.root).unwrap().path(),
+			           expected
+			);
+			fs::remove_file(expected).unwrap();
+		}
+		assert_eq!(
+		           Gcc::try_from_default_paths(&installation.root).err()
+		                                                          .unwrap()
+		                                                          .to_string(),
+		           "Could not find ARM toolchain in default paths"
+		);
+	}
+
+	#[cfg(target_os = "macos")]
+	struct GccInstallation {
+		root: PathBuf,
+	}
+
+	#[cfg(target_os = "macos")]
+	impl GccInstallation {
+		fn new(name: &str) -> Self {
+			let root = std::env::temp_dir().join(format!("playdate gcc {name} {}", std::process::id()));
+			fs::create_dir(&root).unwrap();
+			Self { root }
+		}
+
+		fn compiler(&self, directory: &str, name: &str, executable: &str) -> PathBuf {
+			let path = self.root.join(directory).join(name);
+			fs::create_dir_all(path.parent().unwrap()).unwrap();
+			symlink(executable, &path).unwrap();
+			path
+		}
+	}
+
+	#[cfg(target_os = "macos")]
+	impl Drop for GccInstallation {
+		fn drop(&mut self) { let _ = fs::remove_dir_all(&self.root); }
 	}
 }
